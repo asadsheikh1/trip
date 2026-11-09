@@ -1,0 +1,5 @@
+boto3>=1.34
+python-dotenv>=1.0
+tqdm>=4.66
+Pillow>=10.0          # thumbnails for the gallery grid (optional)
+pillow-heif>=0.16     # lets thumbnails work for iPhone .HEIC photos (optional)
