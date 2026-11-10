@@ -41,6 +41,7 @@ python upload.py /path/to/your/media
 - Re-running is safe: files already in S3 with the same size are skipped, so an interrupted 16 GB upload resumes.
 - Large files use multipart upload (64 MB parts, parallel). Tune with `--workers N`.
 - Image thumbnails (800px JPEG) go to `_thumbs/` so the grid loads fast. Originals are never touched. Skip with `--no-thumbs`.
+- **Videos:** raw camera files are slow/unplayable in browsers (iPhone `.MOV` is H.265, and the metadata sits at the end of the file). So each video also gets a poster frame (`_thumbs/`) and a 1080p H.264 preview with fast-start (`_previews/`). The gallery plays the preview (with a "play original" switch); **Download always gives the untouched original.** Needs ffmpeg (`imageio-ffmpeg` in requirements.txt bundles one). Skip with `--no-previews`. Re-running only creates what's missing.
 - Other options: `--prefix trip/`, `--dry-run`, `--manifest-only` (rebuild the manifest from what's in the bucket).
 - Every object is stored with `Content-Disposition: attachment`, so the download button gives the exact original file. (Inline display in the gallery is unaffected.)
 

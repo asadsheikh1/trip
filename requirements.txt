@@ -3,3 +3,4 @@ python-dotenv>=1.0
 tqdm>=4.66
 Pillow>=10.0          # thumbnails for the gallery grid (optional)
 pillow-heif>=0.16     # lets thumbnails work for iPhone .HEIC photos (optional)
+imageio-ffmpeg>=0.5      # bundled ffmpeg for video posters/previews (or install ffmpeg yourself)

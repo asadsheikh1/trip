@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function formatSize(n) {
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -8,28 +8,6 @@ function formatSize(n) {
     i++;
   }
   return `${i === 0 ? n : n.toFixed(1)} ${units[i]}`;
-}
-
-// Only mount heavy elements (<video>) once a tile scrolls near the viewport.
-function useInView() {
-  const ref = useRef(null);
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || seen) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setSeen(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: "300px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [seen]);
-  return [ref, seen];
 }
 
 function DownloadLink({ item, className, children }) {
@@ -49,16 +27,22 @@ function DownloadLink({ item, className, children }) {
 }
 
 function Tile({ item, onOpen }) {
-  const [ref, seen] = useInView();
+  // Never mount <video> in the grid: hundreds of large files would fight for
+  // the browser's connection limit. Videos show a poster frame instead.
   return (
-    <div className="tile" ref={ref} onClick={onOpen}>
+    <div className="tile" onClick={onOpen}>
       {item.type === "image" ? (
         <img src={item.thumb || item.url} loading="lazy" alt={item.name} />
-      ) : (
+      ) : item.thumb ? (
         <>
-          {seen && <video src={`${item.url}#t=0.1`} preload="metadata" muted playsInline />}
+          <img src={item.thumb} loading="lazy" alt={item.name} />
           <span className="play">▶</span>
         </>
+      ) : (
+        <div className="placeholder">
+          <span className="play static">▶</span>
+          <small>{formatSize(item.size)}</small>
+        </div>
       )}
       <div className="tile-bar">
         <span className="tile-name">{item.name}</span>
@@ -73,8 +57,14 @@ function Tile({ item, onOpen }) {
 function Lightbox({ items, index, onClose, onIndex }) {
   const item = items[index];
   const [loaded, setLoaded] = useState(false);
+  const [useOriginal, setUseOriginal] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
-  useEffect(() => setLoaded(false), [index]);
+  useEffect(() => {
+    setLoaded(false);
+    setUseOriginal(false);
+    setVideoError(false);
+  }, [index]);
 
   const prev = useCallback(() => onIndex((index - 1 + items.length) % items.length), [index, items.length, onIndex]);
   const next = useCallback(() => onIndex((index + 1) % items.length), [index, items.length, onIndex]);
@@ -127,7 +117,43 @@ function Lightbox({ items, index, onClose, onIndex }) {
             {!loaded && <div className="loading">Loading full quality…</div>}
           </>
         ) : (
-          <video key={item.key} className="lb-img" src={item.url} controls autoPlay playsInline />
+          <>
+            <video
+              key={item.key + (useOriginal ? ":orig" : ":prev")}
+              className="lb-img"
+              src={useOriginal || !item.preview ? item.url : item.preview}
+              poster={item.thumb || undefined}
+              controls
+              autoPlay
+              playsInline
+              preload="metadata"
+              onError={() => setVideoError(true)}
+            />
+            <div className="vid-note">
+              {videoError ? (
+                <span className="err">
+                  Your browser can't play this file. Use “Download original” and open it in a video player.
+                </span>
+              ) : item.preview && !useOriginal ? (
+                <>
+                  Playing a 1080p preview ·{" "}
+                  <button className="link" onClick={() => (setVideoError(false), setUseOriginal(true))}>
+                    play original
+                  </button>{" "}
+                  · Download gives the untouched original
+                </>
+              ) : item.preview ? (
+                <>
+                  Playing original ·{" "}
+                  <button className="link" onClick={() => (setVideoError(false), setUseOriginal(false))}>
+                    back to preview
+                  </button>
+                </>
+              ) : (
+                "Playing original (may be slow or unsupported in some browsers)"
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
